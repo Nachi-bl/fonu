@@ -71,10 +71,58 @@ export async function api<T>(
     clearTimeout(timeout);
   }
 }
-export function uploadProductImages(files: File[]) {
-  const body = new FormData();
-  files.forEach((file) => body.append('images', file));
-  return api<{ urls: string[] }>('/products/images/upload', 'POST', body, 120000);
+export async function uploadProductImages(
+  files: File[],
+  onUploaded?: (index: number, url: string) => void,
+) {
+  if (!files.length || files.length > 7) throw new Error('Choose between 1 and 7 images.');
+  if (files.some((file) => !file.size || file.size > 10 * 1024 * 1024))
+    throw new Error('Each image must be non-empty and no larger than 10 MB.');
+  const signed = await api<{
+    cloudName: string;
+    apiKey: string;
+    timestamp: number;
+    folder: string;
+    signature: string;
+  }>('/products/images/signature', 'POST');
+  const results = await Promise.allSettled(
+    files.map(async (file, index) => {
+      const body = new FormData();
+      body.append('file', file);
+      body.append('api_key', signed.apiKey);
+      body.append('timestamp', String(signed.timestamp));
+      body.append('folder', signed.folder);
+      body.append('signature', signed.signature);
+      try {
+        const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${encodeURIComponent(signed.cloudName)}/image/upload`,
+          { method: 'POST', body, signal: AbortSignal.timeout(120000) },
+        );
+        const result = (await response.json()) as { secure_url?: string; resource_type?: string };
+        if (
+          !response.ok ||
+          result.resource_type !== 'image' ||
+          !result.secure_url?.startsWith('https://res.cloudinary.com/')
+        )
+          throw new Error(
+            `${file.name} could not be uploaded. Check that it is a supported image and try again.`,
+          );
+        onUploaded?.(index, result.secure_url);
+        return result.secure_url;
+      } catch (error) {
+        if (error instanceof TypeError || error instanceof DOMException)
+          throw new Error(`Unable to upload ${file.name}. Check your connection and try again.`, {
+            cause: error,
+          });
+        throw error;
+      }
+    }),
+  );
+  const failure = results.find((result) => result.status === 'rejected');
+  if (failure?.status === 'rejected') throw failure.reason;
+  return {
+    urls: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
+  };
 }
 export function imagePreview(url: string) {
   return url.startsWith('https://res.cloudinary.com/')

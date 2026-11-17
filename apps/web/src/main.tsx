@@ -1378,7 +1378,15 @@ function ProductForm({ product, close }: { product: Product | null; close: () =>
       if (files.length) {
         setUploading(true);
         try {
-          const result = await uploadProductImages(files);
+          const result = await uploadProductImages(files, (index, url) => {
+            setImages((current) =>
+              current.map((image) =>
+                image.file === files[index]
+                  ? { url, preview: image.preview, name: image.name }
+                  : image,
+              ),
+            );
+          });
           let next = 0;
           savedImages = images.map((image) =>
             image.file

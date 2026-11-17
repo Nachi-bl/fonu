@@ -10,6 +10,25 @@ export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 @Injectable()
 export class ImagesService {
+  signature() {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!cloudName || !apiKey || !apiSecret)
+      throw new ServiceUnavailableException(
+        'Image uploads are not configured. Add the Cloudinary credentials to the API environment and restart the API.',
+      );
+    const params = {
+      timestamp: Math.floor(Date.now() / 1000),
+      folder: process.env.CLOUDINARY_FOLDER || 'stockroom/products',
+    };
+    return {
+      cloudName,
+      apiKey,
+      ...params,
+      signature: cloudinary.utils.api_sign_request(params, apiSecret),
+    };
+  }
   async upload(files: Express.Multer.File[]) {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;

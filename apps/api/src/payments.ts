@@ -14,6 +14,7 @@ import {
 import { randomUUID } from 'crypto';
 import { PrismaService } from './prisma';
 import { AuthGuard, AuthRequest, Roles } from './common';
+import { allowedOrigins } from './origins';
 
 type Verification = {
   status: string;
@@ -163,12 +164,12 @@ export class PaymentsController {
   constructor(private payments: PaymentsService) {}
   @Post() initialize(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
     const origin = req.headers.origin;
-    const allowed = (process.env.CORS_ORIGIN || 'http://localhost:5173')
-      .split(',')
-      .map((value) => value.trim());
-    if (process.env.NODE_ENV !== 'production')
-      allowed.push('http://localhost:5173', 'http://localhost:5174');
+    const allowed = allowedOrigins();
     const callbackOrigin = origin && allowed.includes(origin) ? origin : allowed[0];
+    if (!callbackOrigin)
+      throw new ServiceUnavailableException(
+        'Configure CORS_ORIGIN with the website URL before accepting payments.',
+      );
     return this.payments.initialize(id, req.user.sub, callbackOrigin);
   }
   @Post('verify') verify(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {

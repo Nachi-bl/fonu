@@ -1,12 +1,17 @@
 {
   "name": "inventory-orders",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "workspaces": [
     "apps/*"
   ],
   "scripts": {
     "dev": "concurrently -n api,web \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
     "build": "npm run build --workspaces",
+    "vercel:build": "npm run db:generate && npm run build",
+    "db:deploy": "node --env-file-if-exists=.env node_modules/prisma/build/index.js migrate deploy --schema apps/api/prisma/schema.prisma",
     "typecheck": "npm run typecheck --workspaces",
     "test": "node scripts/test.cjs",
     "db:generate": "npm run db:generate -w apps/api",
@@ -14,7 +19,7 @@
     "db:seed": "npm run db:seed -w apps/api",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint apps scripts"
+    "lint": "eslint apps scripts api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

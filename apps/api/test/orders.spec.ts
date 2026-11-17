@@ -210,6 +210,11 @@ jest.setTimeout(30000);
       .expect(409);
   });
   it('protects image uploads and accepts a seven-image multipart batch', async () => {
+    await request(app.getHttpServer()).post('/api/v1/products/images/signature').expect(401);
+    await request(app.getHttpServer())
+      .post('/api/v1/products/images/signature')
+      .set('Authorization', `Bearer ${customer}`)
+      .expect(403);
     const upload = jest
       .spyOn(app.get(ImagesService), 'upload')
       .mockResolvedValue({ urls: ['https://res.cloudinary.com/test/image/upload/example.png'] });

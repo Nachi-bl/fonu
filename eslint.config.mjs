@@ -13,7 +13,7 @@ export default ts.config(
     },
   },
   {
-    files: ['**/*.cjs'],
+    files: ['**/*.cjs', 'api/**/*.js'],
     languageOptions: {
       globals: {
         require: 'readonly',

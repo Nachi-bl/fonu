@@ -1,85 +1,182 @@
-# Stockroom — Inventory & Orders
+﻿# Stockroom
 
-A React + TypeScript storefront and operations dashboard backed by a NestJS REST API,
-Prisma, and PostgreSQL. All styling uses **SCSS**, with no Tailwind dependency. The supplied
-`Inventory_Orders_Service_Detailed_Roadmap.pdf` is the implementation brief.
+Stockroom is a small shop and inventory manager. Customers can browse products, place orders, and pay with Paystack. Administrators can manage products, upload photos, update stock, and view incoming orders.
 
-Customers can browse/search/filter products, inspect details, register/sign in, manage a
-cart, place orders, and view/cancel their own pending orders. Administrators can create,
-edit, archive/restore products, update stock, inspect incoming orders, and confirm or
-cancel pending orders. Amounts use integer kobo; the UI displays Nigerian naira.
+The website uses React and TypeScript. The API uses NestJS, and the database uses PostgreSQL with Prisma. Styling is written in SCSS. Product photos are stored in Cloudinary.
 
-```mermaid
-flowchart LR
-  React[React + SCSS] -->|REST / JWT| Nest[NestJS API]
-  Nest --> Prisma
-  Prisma --> PostgreSQL
+This guide explains how to run the project on your computer, use each account, and prepare it for Vercel.
+
+The website is what you see in the browser. The API is the server that handles requests such as signing in or placing an order. The database stores the accounts, products, and orders so they remain available after the application stops.
+
+## Before you start
+
+Install **Node.js 22**, which includes npm. You also need a PostgreSQL database. You can use a hosted database, an existing local PostgreSQL installation, or the Docker setup included in this project. Docker is only needed if you choose that last option.
+
+Open a terminal inside the main project folder. You should see `package.json`, `apps`, and `README.md` there.
+
+Check that Node and npm are available:
+
+```sh
+node --version
+npm --version
 ```
 
-## Local setup
+If PowerShell says it cannot run `npm.ps1`, use `npm.cmd` instead of `npm` in the commands below. For example, run `npm.cmd ci` instead of `npm ci`.
 
-Prerequisites: Node.js 22.12+ (Node 22 LTS recommended), npm, and PostgreSQL. Docker is
-optional if using a hosted database. On PowerShell with scripts disabled, use `npm.cmd`
-in place of `npm`.
+## 1. Install the project
+
+Run this after downloading or cloning the repository:
 
 ```sh
 npm ci
-# Copy .env.example to .env and set DATABASE_URL.
-# Optional local PostgreSQL:
+```
+
+This installs the frontend, API, and development tools using the versions recorded in `package-lock.json`. Let it finish before continuing.
+
+## 2. Set up your environment file
+
+The `.env` file holds settings and private credentials. It belongs in the main project folder, next to `package.json`.
+
+**If `.env` already exists, keep it.** You do not need to copy the example over it. Overwriting it could replace your database address and the passwords used to create your demo accounts.
+
+For a fresh setup, copy `.env.example` and name the copy `.env`. You can do this in your file manager. In PowerShell, the command is:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Open `.env` in your editor and fill in the values described below. Replace the example password and secret text with your own values. Keep this file private.
+
+### Database address
+
+`DATABASE_URL` tells the API where your PostgreSQL database is located.
+
+For a hosted database, copy its PostgreSQL connection URL from the provider and put it after `DATABASE_URL=`. Keep any connection options supplied by the provider.
+
+For the included Docker database, use:
+
+```dotenv
+DATABASE_URL=postgresql://inventory:inventory_local@localhost:5432/inventory
+```
+
+Those credentials are only for the local Docker database.
+
+### Login secret
+
+`JWT_SECRET` is used by the API to sign login tokens. It must contain at least 32 characters. Generate a random value with:
+
+```sh
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+Copy the result into `.env` as the value of `JWT_SECRET`. Do not share it or put it in frontend code.
+
+### Demo account passwords
+
+Choose your own values for `SEED_ADMIN_PASSWORD` and `SEED_CUSTOMER_PASSWORD`. Each password must contain at least 10 characters. You will use these to sign in after creating the demo accounts.
+
+`SEED_ADMIN_EMAIL` can stay as `admin@stockroom.local`. The administrator's display name is **Blessing William**.
+
+### Local addresses
+
+For the usual local setup, leave these values as:
+
+```dotenv
+PORT=4000
+CORS_ORIGIN=http://localhost:5173
+```
+
+`PORT` is the API port. `CORS_ORIGIN` identifies an allowed website address. Local development also supports the website running on port 5174.
+
+You can configure Cloudinary and Paystack later. Browsing products and signing in do not require those credentials. Uploading new images needs Cloudinary, and making a payment needs Paystack.
+
+## 3. Prepare the database
+
+If you chose the included Docker database, start Docker Desktop and run:
+
+```sh
 docker compose -f infra/docker-compose.yml up -d db
-# Generates missing JWT and seed secrets in .env without printing them:
-node scripts/configure-local.cjs
+```
+
+Skip that command if PostgreSQL is already running elsewhere.
+
+Next, run these commands one at a time:
+
+```sh
 npm run db:generate
 npm run db:migrate
 npm run db:seed
+```
+
+`db:generate` creates the Prisma client used by the API to communicate with PostgreSQL.
+
+`db:migrate` creates or updates the database tables using the committed migrations. It does not reset the database.
+
+`db:seed` adds eight sample products and the demo accounts. Running it again preserves existing stock and account passwords. It also keeps the seeded administrator's name as Blessing William. Changing a seed password in `.env` does not reset an account that already exists.
+
+Use seeding for a local or demo setup. Do not run it automatically against a production database.
+
+## 4. Start the website
+
+Run:
+
+```sh
 npm run dev
 ```
 
-If `.env` already exists, preserve its database URL. The configuration script only appends
-missing secrets. Seed is idempotent: it adds missing sample products/accounts without
-resetting existing passwords or inventory. Never run demo seeding in production.
+Keep that terminal open. This starts the website and API together. Press **Ctrl+C** when you want to stop them.
 
-- Frontend: <http://localhost:5173>
-- API: <http://localhost:4000/api/v1>
-- OpenAPI/Swagger: <http://localhost:4000/api/docs>
+Open the website address printed in the terminal. It will normally be <http://localhost:5173>. If that port is already in use, Vite may print <http://localhost:5174> instead.
 
-Vite proxies `/api` locally. For separate web hosting, set `VITE_API_BASE_URL` at build time
-to the API URL including `/api/v1`; allow that web origin using `CORS_ORIGIN` on the API.
-Production API startup: `node apps/api/dist/main.js` after `npm run build`.
-Serve `apps/web/dist` using a static host with SPA fallback to `index.html`.
+The API is at <http://localhost:4000/api/v1>. Its interactive documentation is at <http://localhost:4000/api/docs>.
 
-## Environment and demo accounts
+The website forwards local `/api` requests to the API automatically. You do not need to configure a separate frontend API address for this setup.
 
-| Variable                 | Purpose                                                                               |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | PostgreSQL connection string; never commit it                                         |
-| `JWT_SECRET`             | At least 32 random characters; generated locally if absent                            |
-| `PORT`                   | API port, defaults to 4000                                                            |
-| `CORS_ORIGIN`            | Comma-separated allowed web origins; default localhost:5173                           |
-| `SEED_ADMIN_EMAIL`       | Optional admin email; default admin@stockroom.local                                   |
-| `SEED_ADMIN_PASSWORD`    | Admin seed password, at least 10 characters                                           |
-| `SEED_CUSTOMER_PASSWORD` | Customer seed password, at least 10 characters                                        |
-| `TEST_DATABASE_URL`      | Optional separate test database; otherwise a unique schema is created on DATABASE_URL |
-| `VITE_API_BASE_URL`      | Frontend build-time API base; default /api/v1                                         |
+## Sign in to an account
 
-The seeded administrator signs in as `admin@stockroom.local` (or `SEED_ADMIN_EMAIL`).
-The seeded customer signs in as `customer@stockroom.local`. Their passwords are the
-corresponding values in your **local `.env`**. They are intentionally absent from this
-repository. Alternatively, register a customer through the UI. Public registration cannot
-create an administrator.
+Open `/login` on your website. For example, use <http://localhost:5173/login>, or change the port to the one printed by Vite.
 
-## Product images (Cloudinary)
+### Administrator
 
-In **Admin → Inventory → Add product / Edit**, click the upload area to choose images.
-Each product supports at most **7 images**, including existing images, with a **10 MB
-limit per image**. Preview or remove selections and use **Make cover** to choose the
-catalog image. The detail page displays the remaining images as selectable thumbnails.
-Catalog cards with multiple images rotate every five seconds and provide previous/next
-arrows, position dots, and pause/play controls. Rotation pauses on hover or keyboard focus,
-and is disabled when the visitor prefers reduced motion. Single-image cards remain static.
-Uploads happen when **Save product** is clicked; selecting files alone does not upload.
+Sign in with `admin@stockroom.local`, unless you chose a different `SEED_ADMIN_EMAIL`. Use the password stored in `SEED_ADMIN_PASSWORD` when the account was first seeded. The account should display **Blessing William**.
 
-Add these values to the root `.env` and restart the API:
+The inventory page is `/admin/products`. Incoming orders are at `/admin/orders`.
+
+### Customer
+
+The sample customer email is `customer@stockroom.local`. Use the password stored in `SEED_CUSTOMER_PASSWORD` when that account was created.
+
+You can also open `/register` and create another customer account. Public registration always creates a customer, never an administrator.
+
+Login tokens are kept in browser memory and expire after one hour. Refreshing the page requires signing in again. Your cart is stored separately and remains available after a refresh.
+
+## Use the shop as a customer
+
+1. Open the product catalog at `/`.
+2. Search for a product or choose a category.
+3. Click a product to read its details and view its photos.
+4. Choose a quantity and add it to your cart.
+5. Open **My cart**, review the quantities, and sign in if needed.
+6. Click **Place order**.
+7. On the order page, find **Complete your payment** and click the Paystack button.
+
+Open **My orders** at `/orders` to see your orders and read their details. Customers can only see their own orders.
+
+The cart shows an estimate. When you place an order, the API checks current prices and stock and calculates the final amount. Keeping something in your cart does not reserve it. Stock is reduced when the order is created.
+
+## Manage products as an administrator
+
+Sign in as the administrator and open **Inventory**. On a smaller screen, open the hamburger menu first.
+
+To create a product, click **Add product**, enter its name, description, SKU, category, price, and stock quantity, then click **Save product**. The SKU is a unique code for the product, such as `DESK-001`.
+
+To change a product, click **Edit** beside it. You can update the same fields and manage its images. Prices entered in the form are in naira.
+
+**Archive** removes a product from the public catalog without deleting its order history. **Restore** makes an archived product available again. A product with zero stock cannot be added to the cart.
+
+## Set up product image uploads
+
+Get your cloud name, API key, and API secret from your Cloudinary dashboard. Put them in the root `.env` file:
 
 ```dotenv
 CLOUDINARY_CLOUD_NAME=your-cloud-name
@@ -88,114 +185,51 @@ CLOUDINARY_API_SECRET=your-api-secret
 CLOUDINARY_FOLDER=stockroom/products
 ```
 
-Get the first three values from your Cloudinary dashboard. They are server-only: do not
-add them to Vite variables. The integration uses signed server uploads; no unsigned
-upload preset is required. See [Cloudinary's Node upload documentation](https://cloudinary.com/documentation/node_image_and_video_upload).
+Restart the API after saving the file. If you are using `npm run dev`, stop it with Ctrl+C and start it again.
 
-The picker accepts image formats without a JPEG/PNG restriction. Cloudinary validates the
-actual file content and determines supported formats; unsupported/corrupt images return
-an actionable error. Cloudinary previews use `f_auto,q_auto` for browser-compatible
-delivery, including originals that a browser cannot preview locally. The original upload
-is preserved. See [supported image formats](https://cloudinary.com/documentation/image_format_support).
+Open **Add product** or **Edit**, then click **Click to upload product images**. You can select several files at once. A product can have at most **seven images in total**, including any images it already has. The picker limits each image to **10 MB**.
 
-`POST /api/v1/products/images/upload` is admin-only, accepts multipart files in the
-`images` field, and returns `{ urls: string[] }`. Product create/update accepts an ordered
-`imageUrls` array (maximum seven). Both DTO validation and a database CHECK enforce the
-gallery limit. Existing supplied local photos are preserved by the migration.
+The picker accepts image formats without limiting you to JPEG or PNG. Cloudinary checks the actual file and must support its format. A file your browser cannot preview locally may still upload successfully and display through Cloudinary afterward.
 
-Without credentials, the application still runs and existing images remain available;
-upload attempts return 503 with configuration guidance. Provider failures preserve the
-form for retry. Partially successful upload batches are cleaned up. Removing an image
-from a product does not delete the Cloudinary asset; unused asset cleanup is a future
-maintenance task. An upload that succeeds before a product save fails can leave an unused
-asset if the editor is then closed.
+Remove an image before saving or click **Make cover** to move it to the first position. The first image is used on the catalog card. Images upload when you click **Save product**. Selecting files alone does not upload them.
 
-## Payments (Paystack)
+Cards with multiple images rotate every five seconds. Customers can use the arrows and dots or pause the slideshow. Rotation pauses on hover or keyboard focus and respects the visitor's reduced-motion setting. The product detail page has selectable thumbnails.
 
-The cart shows Paystack as the payment method. After placing an order, use the visible
-**Pay … with Paystack** button in **Complete your payment** on the order page. Card and
-other payment details are entered on Paystack's hosted checkout, not in this application.
+The API provides an upload signature, and the browser sends the image directly to Cloudinary. The API secret stays on the server. If one file fails, successful uploads remain in the form, so retrying uploads only the remaining files.
 
-Only the existing `PAYSTACK_SECRET_KEY` is required in the root `.env`. Use your Paystack
-test secret while testing and restart the API after changing it. No frontend/public key
-is needed for this hosted-checkout integration. See the [Paystack transaction API](https://paystack.com/docs/api/transaction/).
+Removing an image from a product does not delete it from Cloudinary. Closing the form after an upload can also leave an unused cloud asset. Automatic cleanup is not included.
 
-The API initializes checkout using the saved customer email, NGN total in kobo, and a
-server-generated reference. It reuses an existing checkout session and verifies the
-reference, amount, currency, customer email and order metadata against Paystack before
-marking payment `PAID` and the order `CONFIRMED`. Payment verification is idempotent and
-does not decrement stock again. Zero-total orders complete without a gateway charge.
+## Set up Paystack payments
 
-- `POST /api/v1/orders/:id/payment`: customer owner only; initialize/resume payment.
-- `POST /api/v1/orders/:id/payment/verify`: customer owner only; verify with Paystack.
+Put your Paystack secret key in the root `.env` file:
 
-Returning from Paystack triggers verification. Because sessions are kept in memory, a
-full-page return can require signing in again; the return URL is preserved and verification
-then runs. The order also offers **I have paid — check status** for manual reconciliation.
-This implementation does not yet have a production webhook/reconciliation worker, so
-customers who do not return must open their order and check status. Automatic refunds
-are not implemented. Once checkout is initialized, order cancellation is blocked to avoid
-restoring inventory while a payment could still complete. Before initialization, unpaid
-pending orders remain cancellable. Configure production `CORS_ORIGIN` to the frontend
-origin so the generated callback returns to the correct site.
-
-## Policy and data safety
-
-- JWT access tokens expire after one hour and stay in browser memory. Refreshing the page
-  requires signing in again. The local cart persists and does not reserve stock.
-- All requests are validated with unknown fields rejected. Passwords use bcrypt hashing.
-  API authorization independently enforces roles and order ownership.
-- Checkout ignores client prices and totals. In one transaction it conditionally decrements
-  stock, captures product name/price snapshots, and inserts the order and items. Products
-  are processed in sorted ID order to reduce deadlocks. Missing, archived, or insufficient
-  stock rolls the entire checkout back.
-- Orders begin `PENDING`. Admins can confirm or cancel them. Customers can cancel only their
-  own pending orders. `DELETE /orders/:id` means cancellation, **not physical deletion**.
-  Both confirmed and cancelled orders are terminal. An atomic status condition makes
-  cancellation restore inventory exactly once, including under concurrent requests.
-- Product deletion archives the product and preserves historical references. Admins can
-  restore products from inventory. Public detail endpoints return active products only;
-  historical orders render their saved product names and prices.
-- Prices, stock, quantities and totals have SQL CHECK constraints. Totals have an explicit
-  PostgreSQL integer bound. Orders and foreign keys have supporting indexes.
-- Helmet, bounded JSON bodies, global rate limits (120/minute) and auth limits (10/minute)
-  are enabled. Rate limits are per-process; distributed production deployments should use
-  a shared limiter and configure trusted proxies deliberately.
-- Tokens, database URLs and passwords are excluded from application error logs. Errors
-  return a request ID. No payments, shipping integration, or refresh-token subsystem.
-
-## API reference
-
-All paths below are relative to `/api/v1`. Protected requests use
-`Authorization: Bearer <accessToken>`.
-
-| Method | Path                | Access / behavior                                                  |
-| ------ | ------------------- | ------------------------------------------------------------------ |
-| POST   | /auth/register      | Public; name, email, password; creates customer                    |
-| POST   | /auth/login         | Public; email, password; token + safe user                         |
-| GET    | /auth/me            | Signed-in user                                                     |
-| GET    | /products           | Public; active products, page/limit/search/category                |
-| GET    | /products/inventory | Admin; active and archived products                                |
-| GET    | /products/:id       | Public; active product details                                     |
-| POST   | /products           | Admin; name, description, category, sku, priceMinor, stockQuantity |
-| PATCH  | /products/:id       | Admin; validated partial updates                                   |
-| DELETE | /products/:id       | Admin; archive                                                     |
-| POST   | /orders             | Customer; atomic checkout                                          |
-| GET    | /orders             | Own orders for customer; all for admin; page/limit                 |
-| GET    | /orders/:id         | Owner or admin; inaccessible orders return 404                     |
-| PATCH  | /orders/:id/status  | Admin; status CONFIRMED or CANCELLED                               |
-| DELETE | /orders/:id         | Owner or admin; cancel pending order                               |
-
-```json
-{ "items": [{ "productId": "a-valid-product-uuid", "quantity": 2 }] }
+```dotenv
+PAYSTACK_SECRET_KEY=your-paystack-secret-key
 ```
 
-Checkout returns the order, totalMinor, status, and price/name snapshots. Pages return
-`{ data, total, page, limit }`. Errors return `{ statusCode, code, message, requestId }`;
-validation messages can be an array. Codes include 400 validation, 401 unauthenticated,
-403 forbidden role, 404 absent/non-owned, 409 stock/state/uniqueness conflict, and 429 limits.
+Use a test secret while testing the application. Restart the API after changing the key. This hosted checkout flow does not need a Paystack public key in the frontend.
 
-## Verification
+The payment method appears in the cart. After placing an order, the customer clicks the Paystack button below the order total. Paystack opens its hosted checkout, where the customer enters payment details.
+
+When the customer returns, the API verifies the payment before marking it **Paid** and confirming the order. It checks the saved reference, amount, currency, customer email, and order information. Repeating verification does not charge the customer or reduce stock again.
+
+Returning from Paystack may require signing in again because the login token stays in memory. The return address is preserved, and verification continues after sign-in. The order also has a button to check payment status manually after checkout has started.
+
+Automatic payment webhooks and refunds are not included yet. If a customer pays but does not return to the website, they should open the order and check its payment status.
+
+## Understand order and payment statuses
+
+A new order starts as **Pending**. Before payment checkout begins, the customer can cancel it. Cancellation restores its stock once, even if the request is repeated.
+
+Once Paystack checkout has been initialized, cancellation is blocked because payment could still complete. Paid and confirmed orders cannot be cancelled through this flow. Unpaid orders do not automatically expire or release stock.
+
+Administrators can open **Incoming orders** to inspect an order and confirm a pending one. An administrator's manual confirmation is separate from payment verification. Check the payment section on the order detail page to see whether money was received.
+
+Historical orders keep the product names and prices recorded when they were placed. Editing or archiving a product does not rewrite those old details.
+
+## Run the checks
+
+Run these from the main project folder:
 
 ```sh
 npm run format:check
@@ -205,44 +239,166 @@ npm run build
 npm test
 ```
 
-`npm test` creates a **unique temporary PostgreSQL schema**, deploys the checked-in
-migration, executes NestJS/Supertest integration tests against it, and drops only that
-generated schema afterward. It never truncates the application schema. The database
-account must have permission to create/drop schemas. Set `TEST_DATABASE_URL` to a separate
-database if the application connection does not have these permissions.
+The first command checks formatting. The next two check code quality and TypeScript. The build command compiles both applications. The test command runs unit and API tests, including tests against PostgreSQL.
 
-Tests check real stored rows, successful checkout, invalid quantities, duplicate items,
-untrusted totals, unauthenticated requests, role checks, insufficient inventory, mixed-cart
-rollback, simultaneous last-unit purchases, historical snapshots, ownership, terminal
-statuses, concurrent cancellation, and registration/password handling. CI runs the same
-checks with a PostgreSQL service. Browser verification is available with both dev servers
-running: `node scripts/browser-check.cjs` (requires Chrome or Playwright Chromium).
+Tests create a uniquely named temporary database schema, apply the migrations there, and remove that schema afterward. They do not reset the application's tables. The database user needs permission to create and drop schemas.
 
-## Project structure
+To use another database for tests, add its address as `TEST_DATABASE_URL` in your root `.env`. Otherwise, the test runner uses a temporary schema on `DATABASE_URL`.
 
-- `apps/api/src`: NestJS authentication, product, order, validation and database components.
-- `apps/api/prisma`: schema, committed migration/constraints, idempotent seed.
-- `apps/api/test`: PostgreSQL-backed API integration tests.
-- `apps/web/src`: React routes, shared API client, query cache, and SCSS design system.
-- `infra`: optional Docker PostgreSQL services.
-- `.github/workflows/ci.yml`: formatting, lint, types, builds and integration checks.
-- `docs/screenshots`: captured customer and admin screens.
+Tests cover stock safety, simultaneous purchases, rollback, permissions, order ownership, cancellation, image validation, payment verification, and deployment origins. External provider calls are mocked. Passing these tests does not mean a real Cloudinary upload or Paystack payment has been made.
 
-See [verification evidence and screenshots](docs/VERIFICATION.md).
+With the development servers running, you can also run:
 
-## Tradeoffs and handover
+```sh
+node scripts/browser-check.cjs
+```
 
-Small feature-oriented NestJS components share one root module to keep this assessment
-compact. Token refresh, shipping, telemetry and the optional Go reporting
-service are deferred. Product galleries use Cloudinary uploads, with supplied local photos
-and SCSS illustrations as fallbacks. Category choices are intentionally narrow in the editor. Browser cart prices
-are estimates; the server is authoritative. Checkout has no idempotency key yet, so after
-a network timeout, inspect order history before retrying.
+This needs Chrome at the Windows path used by the script, or an installed Playwright Chromium browser. It creates a demo order, cancels it to restore stock, and captures screenshots. The cancelled order remains in the demo customer's history.
 
-Before submission, create a public GitHub repository and push this source, then verify its
-public visibility. No remote repository or submission email is created automatically.
-The roadmap's recruiter deadline is inconsistent and must be confirmed independently.
+## Deploy to Vercel
 
-Next improvements: refresh tokens with secure cookies, checkout idempotency keys, dedicated
-stock adjustment/audit records, shared production rate limiting, more frontend automation,
-and optional isolated Go reports after the core application is accepted.
+Import the repository into your Vercel account as **one project**. Keep the Root Directory at the repository root. Do not choose `apps/web` or `apps/api`.
+
+Use **Other** as the framework preset and **22.x** as the Node.js version. The checked-in `vercel.json` supplies these settings:
+
+```text
+Install Command: npm ci
+Build Command: npm run vercel:build
+Output Directory: apps/web/dist
+```
+
+In Vercel's project settings, add `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, the four Cloudinary variables, and `PAYSTACK_SECRET_KEY`. Use the values for the environment you are deploying. Set `CORS_ORIGIN` to your website's full address, including `https://`. Use separate databases and payment credentials for Preview and Production.
+
+Do not upload `.env` or put private keys in variables beginning with `VITE_`. Leave `VITE_API_BASE_URL` unset for this deployment. The website uses `/api/v1` on its own domain. Vercel's deployment and branch URLs are accepted automatically; custom domains should also be listed in `CORS_ORIGIN`.
+
+The Vercel build does not migrate or seed the database. Before deploying changes that include new migrations, apply them to the intended database from a trusted terminal:
+
+```sh
+npm run db:deploy
+```
+
+That command uses the root `.env` if it exists, or the terminal's environment variables. Check the database address before running it. Use a hosted PostgreSQL pooled connection for the deployed API.
+
+After deployment, open the home page, sign in, refresh an admin route, and check that products load. Then test an image upload and a Paystack test payment. The repository configuration alone does not publish the site or copy local environment values into Vercel.
+
+The full deployment guide is in [docs/VERCEL.md](docs/VERCEL.md).
+
+## Useful routes
+
+Use the website address printed by Vite locally, or your deployed domain, before these paths:
+
+```text
+/                     Product catalog
+/login                Sign in
+/register             Create a customer account
+/products/:id         Product details
+/cart                 Shopping cart
+/orders               Customer order history
+/orders/:id           Order details and payment
+/admin/products       Product management
+/admin/orders         Incoming orders
+```
+
+Replace `:id` with a real product or order ID. The application builds these links for you when you click a product or order.
+
+## API reference
+
+Locally, API requests start with `http://localhost:4000/api/v1`. On Vercel, they start with the website's domain followed by `/api/v1`.
+
+Protected requests need an access token returned by login or registration:
+
+```http
+Authorization: Bearer your-access-token
+```
+
+The main endpoints are:
+
+```text
+POST    /auth/register                  Create a customer account
+POST    /auth/login                     Sign in
+GET     /auth/me                        Read the signed-in account
+GET     /products                       Browse active products
+GET     /products/:id                   Read an active product
+GET     /products/inventory             Admin product list, including archived products
+POST    /products                       Admin creates a product
+PATCH   /products/:id                   Admin edits a product
+DELETE  /products/:id                   Admin archives a product
+POST    /products/images/signature      Admin requests a Cloudinary upload signature
+POST    /orders                         Customer creates an order
+GET     /orders                         Own orders for customers, all orders for admins
+GET     /orders/:id                     Order owner or administrator reads an order
+PATCH   /orders/:id/status              Admin confirms or cancels a pending order
+DELETE  /orders/:id                     Cancel an eligible pending order
+POST    /orders/:id/payment             Customer starts or resumes Paystack checkout
+POST    /orders/:id/payment/verify      Customer checks payment status
+```
+
+Product lists support `page`, `limit`, `search`, and `category`. Order lists support `page` and `limit`. List responses contain `data`, `total`, `page`, and `limit`.
+
+To place an order, send an `items` array containing product IDs and positive integer quantities. Do not send prices or totals. The API reads those from the database. Prices in the API are integer kobo: 1,000 naira is `100000` kobo.
+
+The API rejects unknown fields. Errors return `statusCode`, `code`, `message`, and `requestId`. Another customer's order returns 404. Stock shortages and invalid order transitions return 409. Open `/api/docs` on the API host for the interactive reference.
+
+## Where the code lives
+
+```text
+api/index.js                 Vercel function entry point
+apps/web/src                 React screens, shared components, state, and SCSS
+apps/web/public/images       Supplied product photos
+apps/api/src                 Authentication, products, orders, uploads, and payments
+apps/api/prisma              Database schema, migrations, and demo seed
+apps/api/test                API and service tests
+infra                        Optional local PostgreSQL containers
+scripts                      Local configuration, tests, and browser checks
+docs                         Deployment guide, verification notes, and screenshots
+.github/workflows/ci.yml      Automated repository checks
+vercel.json                  Vercel build and routing settings
+```
+
+The browser talks to NestJS through REST requests. NestJS checks authentication and permissions, then uses Prisma to read or update PostgreSQL. Image bytes go directly to Cloudinary with an API-generated signature. Paystack handles payment details, and the API verifies the result.
+
+## If something goes wrong
+
+### The website will not open
+
+Make sure `npm run dev` is still running. Open the address it actually prints rather than assuming port 5173. If the API failed to start, look at its error in the terminal.
+
+### The API cannot connect to the database
+
+Check `DATABASE_URL`, including the database name and connection options. If you chose Docker, make sure Docker Desktop and the `db` container are running. Then retry the migration command.
+
+### Login stops working after a refresh
+
+Sign in again. This is the current in-memory session behavior. If you changed a seed password after creating an account, the account still has its original password.
+
+### The administrator still shows the old name
+
+Sign out and back in. Existing sessions keep the account details received at login. The seeded administrator should then display Blessing William.
+
+### Uploads or payments say they are not configured
+
+Check the Cloudinary variables or `PAYSTACK_SECRET_KEY`, save `.env`, and restart the API. On Vercel, change the project environment variables and redeploy instead.
+
+### Prisma reports that a Windows engine file is locked
+
+Stop the running development servers with Ctrl+C before running `npm ci` or `npm run db:generate` again. Restart the application after generation finishes.
+
+### Tests cannot create a schema
+
+Use a database account with schema creation permissions, or set `TEST_DATABASE_URL` to a separate PostgreSQL database where those permissions are available.
+
+### An order is unpaid after leaving Paystack
+
+Open its detail page and use the payment status check button. Sign in again if needed. Do not assume payment succeeded just because a checkout page was opened.
+
+### A Vercel frontend route returns 404
+
+Confirm the project's Root Directory is the repository root and its build uses the checked-in `vercel.json`. The configured routing handles frontend page refreshes and keeps API requests separate.
+
+## Current limits
+
+The application does not yet include automatic refunds, payment webhooks, shipping integration, refresh tokens, automatic stock release for unpaid orders, or the optional Go reporting service. Rate limiting is per API process or warm Vercel function instance.
+
+Order creation does not have an idempotency key yet. If placing an order times out, check your order history before trying again. An order may already have been created even when the browser did not receive the response.
+
+See [verification notes and screenshots](docs/VERIFICATION.md) for recorded checks and example screens.

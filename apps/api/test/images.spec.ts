@@ -10,6 +10,7 @@ import { ImagesService, MAX_IMAGE_BYTES } from '../src/images';
 jest.mock('cloudinary', () => ({
   v2: {
     config: jest.fn(),
+    utils: { api_sign_request: jest.fn().mockReturnValue('signed-upload') },
     uploader: { upload_stream: jest.fn(), destroy: jest.fn().mockResolvedValue({ result: 'ok' }) },
   },
 }));
@@ -39,6 +40,20 @@ describe('Cloudinary product images', () => {
   });
   afterAll(() => {
     process.env = original;
+  });
+  it('signs direct uploads without exposing the API secret', () => {
+    const result = service.signature();
+    expect(result).toMatchObject({
+      cloudName: 'test-cloud',
+      apiKey: 'test-key',
+      signature: 'signed-upload',
+      folder: 'stockroom/products',
+    });
+    expect(result).not.toHaveProperty('apiSecret');
+    expect(cloudinary.utils.api_sign_request).toHaveBeenCalledWith(
+      { timestamp: expect.any(Number), folder: 'stockroom/products' },
+      'test-secret',
+    );
   });
   it('returns ordered HTTPS URLs for seven images without restricting image formats', async () => {
     const formats = [

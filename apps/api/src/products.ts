@@ -25,6 +25,13 @@ export class ProductsController {
     private db: PrismaService,
     private images: ImagesService,
   ) {}
+  @Post('images/signature')
+  @UseGuards(AuthGuard)
+  @Roles('ADMIN')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  signature() {
+    return this.images.signature();
+  }
   @Post('images/upload')
   @UseGuards(AuthGuard)
   @Roles('ADMIN')

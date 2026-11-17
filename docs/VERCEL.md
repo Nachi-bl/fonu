@@ -22,6 +22,11 @@ The function bundle includes the compiled server, Prisma engine, and Swagger ass
 Static assets are served by Vercel; `/api/*` goes to NestJS. Frontend routes fall back to
 `index.html`, so refreshing `/orders/...` or `/admin/products` works.
 
+The API routing pattern deliberately has no captured path parameters. The function
+also lets Express parse the URL query instead of using Vercel's prefilled query object.
+This prevents platform routing metadata from being treated as application input while
+keeping validation of customer-supplied query fields enabled.
+
 ## Environment variables
 
 Set these in **Project Settings → Environment Variables**. Local `.env` files are excluded

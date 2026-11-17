@@ -156,9 +156,6 @@ function Shell() {
         }}
       >
         <Link to="/" className="brand">
-          <span className="brand-mark">
-            <Boxes size={23} />
-          </span>
           stockroom<span className="brand-dot">.</span>
         </Link>
         <button
@@ -685,9 +682,6 @@ function AuthPage({ register = false }: { register?: boolean }) {
   return (
     <div className="auth-layout">
       <div className="auth-intro">
-        <span className="brand-mark">
-          <Boxes size={30} />
-        </span>
         <p className="eyebrow">WELCOME TO STOCKROOM</p>
         <h1>
           Less managing.

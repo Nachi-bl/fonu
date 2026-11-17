@@ -176,20 +176,11 @@ code {
   font-weight: 650;
   letter-spacing: -1px;
   padding: 0 9px;
+  min-height: 35px;
 }
 .brand-dot {
   color: #60a5fa;
   margin-left: -9px;
-}
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: $blue;
-  color: white;
-  width: 35px;
-  height: 35px;
-  border-radius: 9px;
 }
 .workspace {
   display: flex;
@@ -1556,11 +1547,6 @@ footer {
   align-items: center;
 }
 .auth-intro {
-  .brand-mark {
-    width: 50px;
-    height: 50px;
-    margin-bottom: 30px;
-  }
   .eyebrow {
     margin-top: 12px;
   }
@@ -2197,10 +2183,6 @@ label.payment-method {
     }
     .brand-dot {
       display: inline;
-    }
-    .brand-mark {
-      width: 35px;
-      height: 35px;
     }
     nav {
       display: none;

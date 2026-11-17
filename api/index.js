@@ -3,6 +3,7 @@ const { createApplication } = require('../apps/api/dist/bootstrap');
 let application;
 
 module.exports = async function handler(request, response) {
+  Reflect.deleteProperty(request, 'query');
   application ??= createApplication().catch((error) => {
     application = undefined;
     throw error;
